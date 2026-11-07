@@ -1,6 +1,7 @@
 """Preprocessing and feature engineering pipeline for late deliveries."""
 
 import pandas as pd
+from sklearn.impute import SimpleImputer
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
@@ -23,11 +24,16 @@ def get_features_and_target(df: pd.DataFrame):
 
 
 def build_preprocessor() -> ColumnTransformer:
-    """Construct a ColumnTransformer for scaling numeric and encoding categorical features."""
+    """Construct a ColumnTransformer for imputing/scaling numeric and encoding categorical features."""
     numeric_features = ["distance_km", "items", "hour", "courier_months"]
     categorical_features = ["weather", "day_type", "vehicle"]
 
-    numeric_transformer = StandardScaler()
+    numeric_transformer = Pipeline(
+        steps=[
+            ("imputer", SimpleImputer(strategy="median")),
+            ("scaler", StandardScaler()),
+        ]
+    )
     categorical_transformer = OneHotEncoder(handle_unknown="ignore", sparse_output=False)
 
     preprocessor = ColumnTransformer(
@@ -37,3 +43,13 @@ def build_preprocessor() -> ColumnTransformer:
         ]
     )
     return preprocessor
+
+
+def build_pipeline(model) -> Pipeline:
+    """Take any scikit-learn model and return a complete Pipeline with the preprocessor."""
+    return Pipeline(
+        steps=[
+            ("preprocessor", build_preprocessor()),
+            ("model", model),
+        ]
+    )
