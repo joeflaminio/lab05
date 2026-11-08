@@ -1,0 +1,23 @@
+{
+    "sklearn_version": "1.9.1",
+    "seed": 7,
+    "random_state": 42,
+    "threshold": 0.7,
+    "best_params": {
+        "model__C": 0.1,
+        "model__solver": "liblinear"
+    },
+    "feature_lists": {
+        "numeric": [
+            "distance_km",
+            "items",
+            "hour",
+            "courier_months"
+        ],
+        "categorical": [
+            "weather",
+            "day_type",
+            "vehicle"
+        ]
+    }
+}

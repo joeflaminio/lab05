@@ -3,7 +3,6 @@
 import numpy as np
 from sklearn.metrics import (
     accuracy_score,
-    confusion_matrix,
     f1_score,
     precision_score,
     recall_score,
@@ -17,11 +16,11 @@ def compute_cost(y_true, flagged) -> float:
     $15 for every late order that was NOT flagged (refund + lost custom).
     """
     y_true = np.asarray(y_true)
-    flagged = np.asarray(flagged)
-    
+    flagged = np.asarray(flagged, dtype=bool)
+
     vouchers = np.sum(flagged)
-    missed_lates = np.sum((y_true == 1) & (flagged == False))
-    
+    missed_lates = np.sum((y_true == 1) & (~flagged))
+
     return float(4 * vouchers + 15 * missed_lates)
 
 
@@ -29,18 +28,17 @@ def find_optimal_threshold(y_true, y_prob, thresholds=None) -> float:
     """Find the threshold from 0.05 to 0.95 that minimizes total cost."""
     if thresholds is None:
         thresholds = np.round(np.arange(0.05, 1.00, 0.05), 2)
-        
+
     best_threshold = 0.5
-    float_inf = float("inf")
-    best_cost = float_inf
-    
+    best_cost = float("inf")
+
     for th in thresholds:
-        flagged = (y_prob >= th)
+        flagged = y_prob >= th
         cost = compute_cost(y_true, flagged)
         if cost < best_cost:
             best_cost = cost
             best_threshold = th
-            
+
     return float(best_threshold)
 
 
@@ -56,5 +54,5 @@ def evaluate_predictions(y_true, y_pred, y_prob=None) -> dict:
         metrics["roc_auc"] = float(roc_auc_score(y_true, y_prob))
     else:
         metrics["roc_auc"] = 0.0
-        
+
     return metrics

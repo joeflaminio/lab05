@@ -2,30 +2,30 @@
 
 import json
 import os
-import joblib
-import pandas as pd
-import numpy as np
-from sklearn.base import clone
 
-from sklearn.model_selection import (
-    StratifiedKFold,
-    train_test_split,
-    cross_val_score,
-    cross_val_predict,
-    GridSearchCV,
-)
+import joblib
+import numpy as np
+import pandas as pd
+from sklearn.base import clone
 from sklearn.dummy import DummyClassifier
+from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.metrics import confusion_matrix
+from sklearn.model_selection import (
+    GridSearchCV,
+    StratifiedKFold,
+    cross_val_predict,
+    cross_val_score,
+    train_test_split,
+)
 
 from latedeliveries.data import make_orders
-from latedeliveries.pipeline import get_features_and_target, build_pipeline
 from latedeliveries.evaluation import (
     compute_cost,
-    find_optimal_threshold,
     evaluate_predictions,
+    find_optimal_threshold,
 )
+from latedeliveries.pipeline import build_pipeline, get_features_and_target
 
 RANDOM_STATE = 42
 
@@ -48,7 +48,9 @@ def main():
         "LogisticRegression": LogisticRegression(random_state=RANDOM_STATE),
         "RandomForest": RandomForestClassifier(random_state=RANDOM_STATE),
         "GradientBoosting": GradientBoostingClassifier(random_state=RANDOM_STATE),
-        "LogReg_Balanced": LogisticRegression(class_weight="balanced", random_state=RANDOM_STATE),
+        "LogReg_Balanced": LogisticRegression(
+            class_weight="balanced", random_state=RANDOM_STATE
+        ),
     }
 
     cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=RANDOM_STATE)
@@ -57,34 +59,45 @@ def main():
     print("Running cross-validation model comparison...")
     for name, model in models.items():
         pipeline = build_pipeline(model)
-        
-        # Scoring metrics
-        acc_scores = cross_val_score(pipeline, X_train, y_train, cv=cv, scoring="accuracy")
-        prec_scores = cross_val_score(pipeline, X_train, y_train, cv=cv, scoring="precision")
-        rec_scores = cross_val_score(pipeline, X_train, y_train, cv=cv, scoring="recall")
-        f1_scores = cross_val_score(pipeline, X_train, y_train, cv=cv, scoring="f1")
-        roc_scores = cross_val_score(pipeline, X_train, y_train, cv=cv, scoring="roc_auc")
 
-        cv_results.append({
-            "model": name,
-            "accuracy_mean": float(np.mean(acc_scores)),
-            "accuracy_std": float(np.std(acc_scores)),
-            "precision_mean": float(np.mean(prec_scores)),
-            "precision_std": float(np.std(prec_scores)),
-            "recall_mean": float(np.mean(rec_scores)),
-            "recall_std": float(np.std(rec_scores)),
-            "f1_mean": float(np.mean(f1_scores)),
-            "f1_std": float(np.std(f1_scores)),
-            "roc_auc_mean": float(np.mean(roc_scores)),
-            "roc_auc_std": float(np.std(roc_scores)),
-        })
+        acc_scores = cross_val_score(
+            pipeline, X_train, y_train, cv=cv, scoring="accuracy"
+        )
+        prec_scores = cross_val_score(
+            pipeline, X_train, y_train, cv=cv, scoring="precision"
+        )
+        rec_scores = cross_val_score(
+            pipeline, X_train, y_train, cv=cv, scoring="recall"
+        )
+        f1_scores = cross_val_score(pipeline, X_train, y_train, cv=cv, scoring="f1")
+        roc_scores = cross_val_score(
+            pipeline, X_train, y_train, cv=cv, scoring="roc_auc"
+        )
+
+        cv_results.append(
+            {
+                "model": name,
+                "accuracy_mean": float(np.mean(acc_scores)),
+                "accuracy_std": float(np.std(acc_scores)),
+                "precision_mean": float(np.mean(prec_scores)),
+                "precision_std": float(np.std(prec_scores)),
+                "recall_mean": float(np.mean(rec_scores)),
+                "recall_std": float(np.std(rec_scores)),
+                "f1_mean": float(np.mean(f1_scores)),
+                "f1_std": float(np.std(f1_scores)),
+                "roc_auc_mean": float(np.mean(roc_scores)),
+                "roc_auc_std": float(np.std(roc_scores)),
+            }
+        )
 
     cv_df = pd.DataFrame(cv_results)
     cv_df.to_csv("reports/cv_results.csv", index=False)
     print("Saved CV results to reports/cv_results.csv")
 
-    # 3. Choose model & Tune with GridSearchCV (e.g., Logistic Regression or Random Forest)
-    chosen_base_model = LogisticRegression(class_weight="balanced", random_state=RANDOM_STATE)
+    # 3. Choose model & Tune with GridSearchCV
+    chosen_base_model = LogisticRegression(
+        class_weight="balanced", random_state=RANDOM_STATE
+    )
     chosen_pipeline = build_pipeline(chosen_base_model)
 
     param_grid = {
@@ -121,10 +134,9 @@ def main():
     test_metrics = evaluate_predictions(y_test, test_pred, test_probs)
     cm = confusion_matrix(y_test, test_pred).tolist()
 
-    # Calculate costs on test set for different policies
     flag_none = np.zeros_like(y_test)
     flag_all = np.ones_like(y_test)
-    
+
     cost_none = compute_cost(y_test, flag_none)
     cost_all = compute_cost(y_test, flag_all)
     cost_model = compute_cost(y_test, test_pred)

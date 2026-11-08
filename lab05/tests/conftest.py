@@ -1,7 +1,7 @@
 """Shared pytest fixtures for late deliveries tests."""
 
 import pytest
-import pandas as pd
+
 from latedeliveries.data import make_orders
 
 
